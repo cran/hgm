@@ -1,0 +1,10 @@
+useDynLib(hgm)
+import(deSolve)
+export(hgm.pwishart)
+export(hgm.ncso3)
+export(hgm.ncorthant)
+export(hgm.Rhgm)
+export(hgm.Rhgm.demo1)
+export(hgm.ncBingham)
+
+
