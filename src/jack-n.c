@@ -5,7 +5,7 @@
 #include <string.h>
 #include "sfile.h"
 /*
-  $OpenXM: OpenXM/src/hgm/mh/src/jack-n.c,v 1.30 2015/03/24 07:49:06 takayama Exp $
+  $OpenXM: OpenXM/src/hgm/mh/src/jack-n.c,v 1.34 2015/04/02 10:34:09 takayama Exp $
   Ref: copied from this11/misc-2011/A1/wishart/Prog
   jack-n.c, translated from mh.rr or tk_jack.rr in the asir-contrib. License: LGPL
   Koev-Edelman for higher order derivatives.
@@ -170,7 +170,6 @@ static int mysum(int L[]);
 static int plength(int P[]);
 static int plength_t(int P[]);
 static void ptrans(int P[M_nmx],int Pt[]);
-static int test_ptrans();
 static int huk(int K[],int I,int J);
 static int hdk(int K[],int I,int J);
 static double jjk(int K[]);
@@ -181,14 +180,8 @@ static double qk(int K[],double A[A_LEN],double B[B_LEN]);
 static int bb(int N[],int K[],int M[],int I,int J);
 static double beta(int K[],int M[]);
 static int printp(int kappa[]);
-static int printp2(int kappa[]);
-static int test_beta();
 static double q3_10(int K[],int M[],int SK);
-static double q3_5(double A[],double B[],int K[],int I);
-static void mtest4();
-static void mtest4b();
 static int nk(int KK[]);
-static int plength2(int P1[],int P2[]);
 static int myeq(int P1[],int P2[]);
 static int pListPartition(int M,int N);
 static int pListPartition2(int Less,int From,int To, int M);
@@ -204,23 +197,32 @@ static int genDarray2(int M,int N);
 static int isHStrip(int Kap[],int Nu[]);
 static void hsExec_beta(void);
 static int genBeta(int Kap[]);
-static int checkBeta1();
 static int psublen(int Kap[],int Mu[]);
 static int genJack(int M,int N);
-static int checkJack1(int M,int N);
-static int checkJack2(int M,int N);
-static int mtest1b();
 
 static int imypower(int x,int n);
 static int usage();
 static int setParamDefault();
 static int next(struct SFILE *fp,char *s,char *msg);
-static int gopen_file(void);
 static int setParam(char *fname);
 static int showParam(struct SFILE *fp,int fd);
 static double iv_factor(void);
 static double gammam(double a,int n);
 static double mypower(double a,int n);
+
+#ifdef STANDALONE
+static int test_ptrans();
+static int printp2(int kappa[]);
+static int test_beta();
+static void mtest4();
+static void mtest4b();
+static int plength2(int P1[],int P2[]);
+static int checkBeta1();
+static int checkJack1(int M,int N);
+static int checkJack2(int M,int N);
+static int mtest1b();
+static double q3_5(double A[],double B[],int K[],int I);
+#endif
 
 double mh_t(double A[A_LEN],double B[B_LEN],int N,int M);
 double mh_t2(int J);
@@ -303,7 +305,7 @@ static int myerror(char *s) { oxprintfe("%s: type in control-C\n",s); getchar();
 static double jack1(int K) {
   double F;
   extern int Alpha;
-  int I,J,L,II,JJ,N;
+  int J,II,JJ,N;   /*  int I,J,L,II,JJ,N; */
   N = 1;
   if (K == 0) return((double)1);
   F = xval(1,K);
@@ -316,7 +318,7 @@ static double jack1(int K) {
 static double jack1diff(int K) {
   double F;
   extern int Alpha;
-  int I,J,S,L,II,JJ,N;
+  int J,II,JJ,N;  /* int I,J,S,L,II,JJ,N; */
   N = 1;
   if (K == 0) return((double)1);
   F = K*xval(1,K-1);
@@ -329,7 +331,6 @@ static double jack1diff(int K) {
 
 static double xval(int ii,int p) { /* x_i^p */
   extern double M_x[];
-  double F;
   int i,j;
   static int init=0;
   if (JK_deallocate) { init=0; return(0.0);}
@@ -398,6 +399,7 @@ static void ptrans(int P[M_nmx],int Pt[]) { /* Pt[M_m] */
   }
 }
 
+#ifdef STANDALONE
 static int test_ptrans() {
   extern int M_m;
   int p[M_n0]={5,3,2};
@@ -408,7 +410,7 @@ static int test_ptrans() {
   if (Debug) {for (i=0; i<10; i++) oxprintf("%d,",pt[i]);  oxprintf("\n");}
   return(0);
 }
-
+#endif
 
 /*
   upper hook length
@@ -444,9 +446,9 @@ static int hdk(int K[],int I,int J) {
 */
 static double jjk(int K[]) {
   extern int Alpha;
-  int A,L,I,J;
+  int L,I,J;
   double V;
-  A=Alpha;
+
   V=1;
   L=plength(K);
   for (I=0; I<L; I++) {
@@ -574,6 +576,7 @@ static int printp(int kappa[]) {
   }
   return(0);
 }
+#ifdef STANDALONE
 static int printp2(int kappa[]) {
   int i,ell;
   oxprintf("(");
@@ -594,7 +597,7 @@ static int test_beta() {
   printp(kappa); oxprintf(","); printp(mu1); oxprintf(": beta = %lf\n",beta(kappa,mu1));
   printp(kappa); oxprintf(","); printp(mu2); oxprintf(": beta = %lf\n",beta(kappa,mu2)); return(0);
 }
-
+#endif
 /* main() { test_beta(); } */
 
 
@@ -620,12 +623,12 @@ static int test_beta() {
 static double q3_10(int K[],int M[],int SK) {
   extern int Alpha;
   int Mp[M_m_MAX];
-  int ML[M_nmx];
+  //  int ML[M_nmx];
   int N[M_nmx];
   int i,R;
   double T,Q,V,Ur,Vr,Wr;
   ptrans(M,Mp);
-  for (i=0; i<M_n; i++) {ML[i] = M[i]; N[i] = M[i];}
+  for (i=0; i<M_n; i++) {N[i] = M[i];}
   N[SK-1] = N[SK-1]-1; 
 
   T = SK-Alpha*M[SK-1];
@@ -646,6 +649,7 @@ static double q3_10(int K[],int M[],int SK) {
   return(V);
 }
 
+#ifdef STANDALONE
 static double q3_5(double A[],double B[],int K[],int I) {
   extern int Alpha;
   int Kp[M_m_MAX];
@@ -678,7 +682,8 @@ static double q3_5(double A[],double B[],int K[],int I) {
   }
   return(V);
 }
-
+#endif
+#ifdef STANDALONE
 static void mtest4() {
   double A[A_LEN] = {1.5};
   double B[B_LEN]={6.5};
@@ -700,6 +705,7 @@ static void mtest4b() {
   V2=beta(K,N)/beta(K,M);
   oxprintf("%lf== %lf?\n",V1,V2);
 }
+#endif
 
 /* main() { mtest4(); mtest4b(); } */
 
@@ -719,6 +725,7 @@ static int nk(int KK[]) {
   /* K = (Kpp,Ki) */
   return(Darray[nk(Kpp)]+Ki-1);
 }
+#ifdef STANDALONE
 static int plength2(int P1[],int P2[]) {
   int S1,S2;
   S1 = plength(P1); S2 = plength(P2);
@@ -731,6 +738,7 @@ static int plength2(int P1[],int P2[]) {
   }
   else return(-1);
 }
+#endif
 static int myeq(int P1[],int P2[]) {
   int I,L1;
   if ((L1=plength(P1)) != plength(P2)) return(0);
@@ -776,20 +784,20 @@ static int pListPartition(int M,int N) {
   Less >= M_kap[From], ..., M_kap[To],  |(M_kap[From],...,M_kap[To])|<=M, 
 */
 static int pListPartition2(int Less,int From,int To, int M) {
-  int I,R;
+  int I;
   mh_check_intr(100);
   if (To < From) {
     (*M_pExec)(); return(0);
   }
   for (I=1; (I<=Less) && (I<=M) ; I++) {
     M_kap[From-1] = I;
-    R = pListPartition2(I,From+1,To,M-I);
+    pListPartition2(I,From+1,To,M-I);
   } 
   return(1);
 }
 
 /*
-  partition に対してやる仕事をこちらへ書く.
+  Commands to do for each partition are given here.
 */
 static void pExec_0() {
   if (Debug) {
@@ -839,7 +847,7 @@ static int pListHS2(int From,int To,int Kap[]) {
 }
 
 static void hsExec_0() {
-  int i;
+  /* int i; */
   if(Debug) {oxprintf("hsExec: "); printp(HS_mu); oxprintf("\n");}
 }
 
@@ -1051,7 +1059,7 @@ static int genBeta(int Kap[]) {
   extern int M_beta_pt;
   extern int M_beta_kap[];
   extern int P_pmn;
-  int I,J,N;
+  int I,N;
   if (Debug) {printp(Kap); oxprintf("<-Kappa, P_pmn=%d\n",P_pmn);}
   /* M_beta = newmat(2,P_pmn+1); */
   M_beta_0 = (double *)mymalloc(sizeof(double)*(P_pmn+1));
@@ -1068,7 +1076,7 @@ static int genBeta(int Kap[]) {
   genBeta([2,2,0]);
   genBeta([2,1,1]);
 */
-
+#ifdef STANDALONE
 static int checkBeta1() {
   int Kap[3] = {2,2,0};
   int Kap2[3] = {2,1,0};
@@ -1099,7 +1107,7 @@ static int checkBeta1() {
   }
   return(0);
 }
-
+#endif
 /*
   def checkBeta2() {
   genDarray2(3,3);
@@ -1153,7 +1161,7 @@ static int genJack(int M,int N) {
   int Pmn,I,J,K,L,Nv,H,P;
   int *Kap,*Mu;
   double Jack,Beta_km;
-  int Nk,JJ;
+  int Nk,JJ, two_to_I;
   if (Debug) oxprintf("genJack(%d,%d)\n",M,N);
   M_jack = (double **) mymalloc(sizeof(double *)*(N+2));
   M_2n = imypower(2,N);
@@ -1177,12 +1185,12 @@ static int genJack(int M,int N) {
       for (J=2; J<M_2n; J++) aM_jack(1,J,K) = 0;
     }
   }
-  for (I=1; I<=N; I++) {
+  for (I=1; I<=N; I++) {   two_to_I = imypower(2,I);
     for (K=M+1; K<Pmn+1; K++) {
       aM_jack(I,0,K) = NAN;
       if (M_df) {
         for (J=1; J<M_2n; J++) {
-          if (J >= 2^I) aM_jack(I,J,K) = 0;
+          if (J >= two_to_I) aM_jack(I,J,K) = 0; /* J >= 2^I */
           else aM_jack(I,J,K) = NAN;
         }
       }
@@ -1254,7 +1262,7 @@ static int genJack(int M,int N) {
   } return(0);
 }  
 
-
+#ifdef STANDALONE
 /* checkJack1(3,3) 
  */
 static int checkJack1(int M,int N) {
@@ -1316,6 +1324,7 @@ static int checkJack2(int M,int N) {
 }
 
 /* main() { checkJack2(3,3); } */
+#endif
 
 double mh_t(double A[A_LEN],double B[B_LEN],int N,int M) {
   double F,F2;
@@ -1358,7 +1367,7 @@ double mh_t(double A[A_LEN],double B[B_LEN],int N,int M) {
       if (ParraySize[K] == i) partial_sum[i] += M_qk[K]*aM_jack(N,0,K);
     }
     if (i>0) partial_sum[i] += partial_sum[i-1];
-    serror = myabs((partial_sum[i]-partial_sum[i-1])/partial_sum[i-1]);
+    if (i>0) serror = myabs((partial_sum[i]-partial_sum[i-1])/partial_sum[i-1]);
     if ((i>0)&&(M_m_estimated_approx_deg < 0)&&(serror<M_assigned_series_error)) {
       M_m_estimated_approx_deg = i; break;
     }
@@ -1414,6 +1423,7 @@ double mh_t2(int J) {
   return(F);
 }
 
+#ifdef STANDALONE
 static int mtest1b() {
   double A[1] = {1.5};
   double B[1] = {1.5+5};
@@ -1432,7 +1442,7 @@ static int mtest1b() {
 }
 
 /* main() { mtest1b(); }*/
-
+#endif
 
 
 
@@ -1456,7 +1466,7 @@ static int imypower(int x,int n) {
 }
 
 #ifdef STANDALONE2
-main(int argc,char *argv[]) {
+int main(int argc,char *argv[]) {
   mh_exit(MH_RESET_EXIT);
   /*  jk_main(argc,argv);
       oxprintf("second run.\n"); */
@@ -1489,10 +1499,11 @@ struct MH_RESULT *jk_main(int argc,char *argv[]) {
 }
 
 struct MH_RESULT *jk_main2(int argc,char *argv[],int automode,double newX0g,int newDegree) {
-  double *y0;
-  double x0,xn;
-  double ef;
-  int i,j,rank;
+  // double *y0;
+  //  double x0,xn;  
+  // double ef;
+
+  int i,j; // int i,j,rank;
   double a[1]; double b[1];
   extern double M_x[];
   extern double *Beta;
@@ -1561,7 +1572,7 @@ struct MH_RESULT *jk_main2(int argc,char *argv[],int automode,double newX0g,int 
     if (M_n > Mapprox) Mapprox=M_n;
   }
   /* Output by a file=stdout */
-  ofp = mh_fopen("oxstdout","w",JK_byFile);
+  ofp = mh_fopen("stdout","w",JK_byFile);
 
   sprintf(swork,"%%%%Use --help option to see the help.\n"); mh_fputs(swork,ofp);
   sprintf(swork,"%%%%Mapprox=%d\n",Mapprox); mh_fputs(swork,ofp);
@@ -1686,8 +1697,8 @@ static int setParamDefault() {
 
 static int next(struct SFILE *sfp,char *s,char *msg) {
   static int check=1;
-  char *ng="%Ng=";
-  int i;
+  char *ng="%%Ng=";
+  // int i;
   s[0] = '%';
   while (s[0] == '%') {
     if (!mh_fgets(s,SMAX,sfp)) {
@@ -1695,10 +1706,10 @@ static int next(struct SFILE *sfp,char *s,char *msg) {
       mh_exit(-1);
     }
     if (check && (strncmp(msg,ng,4)==0)) {
-      if (strncmp(s,ng,4) != 0) {
+      if (strncmp(s,ng,5) != 0) {
         oxprintfe("Warning, there is no %%Ng= at the border of Beta's and Ng, s=%s\n",s);
       }
-      check=0;
+      /* check=0; */
     }
     if (s[0] != '%') return(0);
   }
@@ -1833,7 +1844,7 @@ static int showParam(struct SFILE *fp,int fd) {
   int rank,i;
   char swork[1024];
   if (fd) {
-    fp = mh_fopen("oxstdout","w",1);
+    fp = mh_fopen("stdout","w",1);
   }
   rank = imypower(2,Mg);
   sprintf(swork,"%%Mg=\n%d\n",Mg); mh_fputs(swork,fp);

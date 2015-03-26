@@ -1,14 +1,10 @@
 /*
-  $OpenXM: OpenXM/src/hgm/mh/src/sfile.c,v 1.18 2015/03/24 05:59:43 takayama Exp $
+  $OpenXM: OpenXM/src/hgm/mh/src/sfile.c,v 1.20 2015/04/02 05:45:41 takayama Exp $
 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#ifndef STANDALONE
-#include <R.h>
-#include <R_ext/Utils.h>
-#endif
 #include "sfile.h"
 #define SSIZE 5
 int MH_DEBUG = 0;
@@ -120,11 +116,11 @@ char *mh_fgets(char *str,int size,struct SFILE *sfp) {
   return str;
 }
 int mh_fputs(char *str,struct SFILE *sfp) {
-  int i,pt,len,limit;
+  int len,limit;
   int inputLen;
   char *s;
   if (sfp->byFile) return fputs(str,sfp->fp);
-  s = sfp->s; len = sfp->len; pt = sfp->pt; limit=sfp->limit;
+  s = sfp->s; len = sfp->len;  limit=sfp->limit;
   inputLen=strlen(str);
   if (inputLen+len+1 > limit) {
     limit = (inputLen+len+1)*2;
