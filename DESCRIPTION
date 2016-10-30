@@ -2,8 +2,8 @@ Package: hgm
 Type: Package
 Depends: R (>= 2.6.0), deSolve
 Title: Holonomic Gradient Method and Gradient Descent
-Version: 1.11
-Date: 2015-03-26
+Version: 1.16
+Date: 2016-10-30
 Author: Nobuki Takayama, Tamio Koyama, Tomonari Sei, Hiromasa Nakayama, Kenta Nishiyama 
 Maintainer: Nobuki Takayama <takayama@math.kobe-u.ac.jp>
 Description: The holonomic gradient method (HGM, hgm) gives a way to evaluate normalization
@@ -13,7 +13,7 @@ Description: The holonomic gradient method (HGM, hgm) gives a way to evaluate no
 License: GPL-2
 LazyLoad: yes
 URL: http://www.openxm.org
-Packaged: 2015-04-02 23:09:09 UTC; taka
+Packaged: 2016-10-30 01:26:45 UTC; taka
 NeedsCompilation: yes
 Repository: CRAN
-Date/Publication: 2015-04-03 07:48:02
+Date/Publication: 2016-10-30 11:41:37

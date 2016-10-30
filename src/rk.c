@@ -1,7 +1,7 @@
 /*
   License: LGPL
   Ref: Copied from this11/misc-2011/A1/wishart/Prog
-  $OpenXM: OpenXM/src/hgm/mh/src/rk.c,v 1.13 2015/03/24 05:59:43 takayama Exp $
+  $OpenXM: OpenXM/src/hgm/mh/src/rk.c,v 1.18 2016/03/02 01:09:36 takayama Exp $
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +14,7 @@
 #include "t-gsl_odeiv.h"
 extern int MH_RANK;
 extern int MH_M;
+extern MH_RF mh_rf;
 
 char *MH_Gfname;
 char *MH_Dfname;
@@ -34,7 +35,7 @@ double MH_relerr = MH_RELERR_DEFAULT ;
 */
 
 int mh_rf_for_gsl(double t,const double y[],double f[],void *params) {
-  mh_rf(t,(double *)y,MH_RANK,f,MH_RANK);
+  (*mh_rf)(t,(double *)y,MH_RANK,f,MH_RANK);
   return(GSL_SUCCESS);
 }
 
@@ -110,6 +111,7 @@ static void show_v(double x,double *v, int n)
   extern int MH_Dp;
   char swork[MH_SSIZE];
 
+  if (MH_Dp <= 0) return;
   if ((counter % MH_Dp) != 0) { counter++; return;} else counter=1;
   sprintf(swork,"%lf\n",x); mh_fputs(swork,Df);
   for (i = 0; i < n; i++) {sprintf(swork," %le\n", v[i]); mh_fputs(swork,Df);}
@@ -131,6 +133,7 @@ struct MH_RESULT mh_rkmain(double x0,double y0[],double xn)
     double ty[MH_RANK];
   */
   static double *y,*k1,*k2,*k3,*k4,*temp,*ty;
+
   if (MH_deallocate && initialized) {
     if (y) mh_free(y);
     if (k1) mh_free(k1);
@@ -173,25 +176,25 @@ if (MH_strategy == 0) {
         MH_P95=0;
       }
     }
-    mh_rf(x, y, MH_RANK, temp, MH_RANK);
+    (*mh_rf)(x, y, MH_RANK, temp, MH_RANK);
     for (i = 0; i < MH_RANK; i++)
       k1[i] = h * temp[i];
 
     for (i = 0; i < MH_RANK; i++)
       ty[i] = y[i] + 0.5 * k1[i];
-    mh_rf(x + 0.5 * h, ty, MH_RANK, temp, MH_RANK);
+    (*mh_rf)(x + 0.5 * h, ty, MH_RANK, temp, MH_RANK);
     for (i = 0; i < MH_RANK; i++)
       k2[i] = h * temp[i];
 
     for (i = 0; i < MH_RANK; i++)
       ty[i] = y[i] + 0.5 * k2[i];
-    mh_rf(x + 0.5 * h, ty, MH_RANK, temp, MH_RANK);
+    (*mh_rf)(x + 0.5 * h, ty, MH_RANK, temp, MH_RANK);
     for (i = 0; i < MH_RANK; i++)
       k3[i] = h * temp[i];
 
     for (i = 0; i < MH_RANK; i++)
       ty[i] = y[i] + k3[i];
-    mh_rf(x + h, ty, MH_RANK, temp, MH_RANK);
+    (*mh_rf)(x + h, ty, MH_RANK, temp, MH_RANK);
     for (i = 0; i < MH_RANK; i++)
       k4[i] = h * temp[i];
                 
@@ -202,7 +205,7 @@ if (MH_strategy == 0) {
   {
     extern int MH_Dp;
     double dh;
-    double mh_dp_orig;
+    double mh_dp_orig; 
     double x1;
     const gsl_odeiv_step_type *T = gsl_odeiv_step_rkf45;
     gsl_odeiv_step *s = gsl_odeiv_step_alloc(T, MH_RANK); 
@@ -222,7 +225,7 @@ if (MH_strategy == 0) {
     if (x0 >= xn) {oxprintfe("Error: x0 < x must hold.\n"); mh_exit(-30);}
     x = x0;
     if (MH_Dp > 0) dh = MH_Dp*h; else dh=xn-x0;
-    mh_dp_orig = MH_Dp; MH_Dp=1;
+    mh_dp_orig = MH_Dp; MH_Dp=1; 
     while (x < xn)  {
       if (Df) show_v(x,y, MH_RANK);
       if (Gf) {

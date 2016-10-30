@@ -1,4 +1,4 @@
-%% $OpenXM: OpenXM/src/R/r-packages/hgm/man/hgm-package.Rd,v 1.14 2015/03/26 06:51:27 takayama Exp $
+%% $OpenXM: OpenXM/src/R/r-packages/hgm/man/hgm-package.Rd,v 1.15 2016/02/13 06:47:50 takayama Exp $
 \name{hgm-package}
 \alias{hgm-package}
 \alias{HGM}
@@ -59,6 +59,7 @@ Advances in Applied Mathematics 47 (2011), 639--658,
 \code{\link{hgm.ncso3}},
 \code{\link{hgm.pwishart}},
 \code{\link{hgm.Rhgm}}
+\code{\link{hgm.p2wishart}},
 }
 \examples{
 \dontrun{
@@ -67,5 +68,6 @@ example(hgm.ncorthant)
 example(hgm.ncso3)
 example(hgm.pwishart)
 example(hgm.Rhgm)
+example(hgm.p2wishart)
 }
 }

@@ -1,26 +1,27 @@
-% $OpenXM: OpenXM/src/R/r-packages/hgm/man/hgm.cwishart.Rd,v 1.15 2016/03/01 07:29:18 takayama Exp $
-\name{hgm.pwishart}
-\alias{hgm.pwishart}
+% $OpenXM: OpenXM/src/R/r-packages/hgm/man/hgm.c2wishart.Rd,v 1.8 2016/10/28 02:27:39 takayama Exp $
+\name{hgm.p2wishart}
+\alias{hgm.p2wishart}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-    The function hgm.pwishart evaluates the cumulative distribution function
-  of random wishart matrices.
+    The function hgm.p2wishart evaluates the cumulative distribution function
+  of the largest eigenvalues of W1*inverse(W2).
 }
 \description{
-    The function hgm.pwishart evaluates the cumulative distribution function
-  of random wishart matrices of size m times m.
+    The function hgm.p2wishart evaluates the cumulative distribution function
+  of the largest eigenvalues of W1*inverse(W2) where W1 and W2 are Wishart
+  matrices of size m*m of the freedom n1 and n2 respectively.
 }
 \usage{
-hgm.pwishart(m,n,beta,q0,approxdeg,h,dp,q,mode,method,
+hgm.p2wishart(m,n1,n2,beta,q0,approxdeg,h,dp,q,mode,method,
             err,automatic,assigned_series_error,verbose,autoplot)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{m}{The dimension of the Wishart matrix.}
-  \item{n}{The degree of freedome (a parameter of the Wishart distribution)}
-  \item{beta}{The eigenvalues of the inverse of the covariant matrix /2
-(a parameter of the Wishart distribution).
-    The beta is equal to inverse(sigma)/2.
+  \item{n1}{The degree of freedome of the Wishart distribution S1}
+  \item{n2}{The degree of freedome of the Wishart distribution S2}
+  \item{beta}{The eigenvalues of inverse(S2)*S1 where S1 and S2 are 
+    covariant matrices of W1 and W2 respectively.
   }
   \item{q0}{The point to evaluate the matrix hypergeometric series. q0>0}
   \item{approxdeg}{
@@ -45,7 +46,7 @@ hgm.pwishart(m,n,beta,q0,approxdeg,h,dp,q,mode,method,
     of the matrix hypergeometric series and its derivatives at q0.
     When mode=c(1,1,(2^m+1)*p), intermediate values of P(L1 < x) with respect to
     p-steps of x are also returned.  Sampling interval is controled by dp.
-    When autoplot=1, it is automatically set.
+    When autoplot=1, mode is automatically set.
   }
   \item{method}{
     a-rk4 is the default value. 
@@ -105,10 +106,8 @@ function P(L1 < x) at x.  y[1],...,y[2^m] are some derivatives.
 See the reference below.
 }
 \references{
-H.Hashiguchi, Y.Numata, N.Takayama, A.Takemura,
-Holonomic gradient method for the distribution function of the largest root of a Wishart matrix,
-Journal of Multivariate Analysis, 117, (2013) 296-312, 
-\url{http://dx.doi.org/10.1016/j.jmva.2013.03.011},
+H.Hashiguchi, N.Takayama, A.Takemura,
+Distribution of ratio of two Wishart matrices and evaluation of cumulative probability by holonomic gradient method.
 }
 \author{
 Nobuki Takayama
@@ -132,22 +131,22 @@ The obtained value is not validated automatically.
 ## =====================================================
 ## Example 1. 
 ## =====================================================
-hgm.pwishart(m=3,n=5,beta=c(1,2,3),q=10)
+hgm.p2wishart(m=3,n1=5,n2=10,beta=c(1,2,4),q=4)
 ## =====================================================
 ## Example 2. 
 ## =====================================================
-b<-hgm.pwishart(m=4,n=10,beta=c(1,2,3,4),q0=1,q=10,approxdeg=20,mode=c(1,1,(16+1)*100));
-c<-matrix(b,ncol=16+1,byrow=1);
+b<-hgm.p2wishart(m=3,n1=5,n2=10,beta=c(1,2,4),q0=0.3,q=20,approxdeg=20,mode=c(1,1,(8+1)*1000));
+c<-matrix(b,ncol=8+1,byrow=1);
 #plot(c)
 ## =====================================================
 ## Example 3. 
 ## =====================================================
-c<-hgm.pwishart(m=4,n=10,beta=c(1,2,3,4),q0=1,q=10,approxdeg=20,autoplot=1);
+c<-hgm.p2wishart(m=3,n1=5,n2=10,beta=c(1,2,4),q0=0.3,q=20,approxdeg=20,autoplot=1);
 #plot(c)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
-\keyword{ Cumulative distribution function of random wishart matrix }
+\keyword{ Cumulative distribution function of random two wishart matrices }
 \keyword{ Holonomic gradient method }
 \keyword{ HGM }
 

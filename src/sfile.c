@@ -1,5 +1,5 @@
 /*
-  $OpenXM: OpenXM/src/hgm/mh/src/sfile.c,v 1.20 2015/04/02 05:45:41 takayama Exp $
+  $OpenXM: OpenXM/src/hgm/mh/src/sfile.c,v 1.22 2016/06/06 04:39:30 takayama Exp $
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,7 +54,7 @@ int mh_exit(int n) {
     return(n);
   }
 #else
-  error("mh_exit(%d) is called.\n",n);
+  error("Error in hgm. Exit from hgm by mh_exit(%d).\n",n);
 #endif
 }
 
@@ -68,6 +68,8 @@ struct SFILE *mh_fopen(char *name,char *mode,int byFile) {
     sfp->byFile = 1;
     if (strcmp(name,"stdout")==0) {
       sfp->fp = oxstdout;
+	}else if (strcmp(name,"stdin")==0) {
+	  sfp->fp = oxstdin;
     }else{
       sfp->fp = fopen(name,mode);
     }

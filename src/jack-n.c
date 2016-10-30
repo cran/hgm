@@ -4,8 +4,10 @@
 #include <math.h>
 #include <string.h>
 #include "sfile.h"
+
+#define VSTRING "%!version2.0"
 /*
-  $OpenXM: OpenXM/src/hgm/mh/src/jack-n.c,v 1.34 2015/04/02 10:34:09 takayama Exp $
+  $OpenXM: OpenXM/src/hgm/mh/src/jack-n.c,v 1.53 2016/10/30 01:10:18 takayama Exp $
   Ref: copied from this11/misc-2011/A1/wishart/Prog
   jack-n.c, translated from mh.rr or tk_jack.rr in the asir-contrib. License: LGPL
   Koev-Edelman for higher order derivatives.
@@ -15,6 +17,11 @@
   2. Use the recurrence to obtain beta().
   3. Easier input data file format for mh-n.c
   Changelog:
+  2016.02.15 log of Ef
+  2016.02.09 unify 2F1 and 1F1. Parser.
+  2016.02.04 Ef_type (exponential or scalar factor type)
+  2016.02.01 ifdef C_2F1 ...
+  2016.01.12 2F1
   2014.03.15 http://fe.math.kobe-u.ac.jp/Movies/oxvh/2014-03-11-jack-n-c-automatic  see also hgm/doc/ref.html, @s/2014/03/15-my-note-jack-automatic-order-F_A-casta.pdf.
   2014.03.14, --automatic option. Output estimation data.
   2012.02.21, porting to OpenXM/src/hgm
@@ -46,6 +53,8 @@ static int Sample = Sample_default;
 static double *Iv2; 
 static double Ef2; 
 
+static int SAR_warning = 1;
+
 #ifdef NAN
 #else
 #define NAN  3.40282e+38  /* for old 32 bit machines. Todo, configure */
@@ -55,8 +64,14 @@ static double Ef2;
 #define M_n0 3 /* used for tests. Must be equal to M_n */
 #define M_m_MAX 200
 #define M_nmx  M_m_MAX  /* maximal of M_n */
-#define A_LEN  1 /* (a_1) , (a_1, ..., a_p)*/
-#define B_LEN  1 /* (b_1) */
+
+static int A_LEN=-1;  /* (a_1, ..., a_p), A_LEN=p */
+static int B_LEN=-1;  /* (b_1,..., b_q),  B_LEN=q */
+static double *A_pFq=NULL;
+static double *B_pFq=NULL;
+static int Ef_type=1;  /* 1F1 for Wishart */
+/* Ef_type=2;   2F1, Hashiguchi note (1) */
+
 static int Debug = 0;
 static int Alpha = 2;  /* 2 implies the zonal polynomial */
 static int *Darray = NULL;
@@ -176,7 +191,7 @@ static double jjk(int K[]);
 static double ppoch(double A,int K[]);
 static double ppoch2(double A,double B,int K[]);
 static double mypower(double x,int n);
-static double qk(int K[],double A[A_LEN],double B[B_LEN]);
+static double qk(int K[],double A[],double B[]);
 static int bb(int N[],int K[],int M[],int I,int J);
 static double beta(int K[],int M[]);
 static int printp(int kappa[]);
@@ -206,9 +221,22 @@ static int setParamDefault();
 static int next(struct SFILE *fp,char *s,char *msg);
 static int setParam(char *fname);
 static int showParam(struct SFILE *fp,int fd);
+#ifdef STANDALONE
+static int showParam_v1(struct SFILE *fp,int fd);
+#endif
 static double iv_factor(void);
 static double gammam(double a,int n);
 static double mypower(double a,int n);
+
+static double iv_factor_ef_type1(void);
+static double iv_factor_ef_type2(void);
+static double lgammam(double a,int n);
+static double liv_factor_ef_type1(void);
+static double liv_factor_ef_type2(void);
+
+static void setM_x(void);
+static void setM_x_ef_type1(void);
+static void setM_x_ef_type2(void);
 
 #ifdef STANDALONE
 static int test_ptrans();
@@ -224,12 +252,53 @@ static int mtest1b();
 static double q3_5(double A[],double B[],int K[],int I);
 #endif
 
-double mh_t(double A[A_LEN],double B[B_LEN],int N,int M);
+double mh_t(double A[],double B[],int N,int M);
 double mh_t2(int J);
 struct MH_RESULT *jk_main(int argc,char *argv[]);
 struct MH_RESULT *jk_main2(int argc,char *argv[],int automode,double newX0g,int newDegree);
 int jk_freeWorkArea();
 int jk_initializeWorkArea();
+static void setA(double a[],int alen);  /* set A_LEN and A_pFq */
+static void setB(double b[],int blen);
+
+static void setA(double a[],int alen) {
+  int i;
+  if (alen < 0) {
+	if (A_pFq != NULL) myfree(A_pFq);
+	A_pFq=NULL; A_LEN=-1;
+	return;
+  }
+  if (alen == 0) {
+	A_LEN=0; return;
+  }
+  A_LEN=alen;
+  A_pFq = (double *)mymalloc(A_LEN*sizeof(double));
+  if (a != NULL) {
+	for (i=0; i<alen; i++) A_pFq[i] = a[i];
+  }else{
+	for (i=0; i<alen; i++) A_pFq[i] = 0.0;
+  }
+  return;
+}
+static void setB(double b[],int blen) {
+  int i;
+  if (blen < 0) {
+	if (B_pFq != NULL) myfree(B_pFq);
+	B_pFq=NULL; B_LEN=-1;
+	return;
+  }
+  if (blen == 0) {
+	B_LEN=0; return;
+  }
+  B_LEN=blen;
+  B_pFq = (double *)mymalloc(B_LEN*sizeof(double));
+  if (b != NULL) {
+	for (i=0; i<blen; i++) B_pFq[i] = b[i];
+  }else{
+	for (i=0; i<blen; i++) B_pFq[i] = 0.0;
+  }
+  return;
+}
 
 int jk_freeWorkArea() {
   /* bug, p in the cloneP will not be deallocated.
@@ -251,6 +320,7 @@ int jk_freeWorkArea() {
   }
   if (M_qk) {myfree(M_qk); M_qk=NULL;}
   if (P_pki) {myfree(P_pki); P_pki=NULL;}
+  setA(NULL,-1); setB(NULL,-1);
   JK_deallocate=0;
   return(0);
 }
@@ -300,8 +370,15 @@ static int myfree(void *p) {
   if (Debug) oxprintf("myFree at %p\n",p);
   return(mh_free(p));
 }
+#ifdef STANDALONE2
 static int myerror(char *s) { oxprintfe("%s: type in control-C\n",s); getchar(); getchar(); return(0);}
-
+#else
+static int myerror(char *s) {
+  oxprintfe("Error in jack-n.c: %s\n",s);
+  mh_exit(-1);
+  return(0);
+}
+#endif
 static double jack1(int K) {
   double F;
   extern int Alpha;
@@ -502,7 +579,7 @@ static double mypower(double x,int n) {
 }
 /* Q_kappa
  */
-static double qk(int K[],double A[A_LEN],double B[B_LEN]) {
+static double qk(int K[],double A[],double B[]) {
   extern int Alpha;
   int P,Q,I;
   double V;
@@ -512,11 +589,21 @@ static double qk(int K[],double A[A_LEN],double B[B_LEN]) {
   /* to reduce numerical errors, temporary. */
   if (P == Q) {
     for (I=0; I<P; I++) V = V*ppoch2(A[I],B[I],K);
+	return(V);
   }
-  return(V);
 
-  for (I=0; I<P; I++) V = V*ppoch(A[I],K);
-  for (I=0; I<Q; I++) V = V/ppoch(B[I],K);
+  if (P > Q) {
+	for (I=0; I<Q; I++) V = V*ppoch2(A[I],B[I],K);
+	for (I=Q; I<P; I++) V = V*ppoch(A[I],K);
+  }else {
+	for (I=0; I<P; I++) V = V*ppoch2(A[I],B[I],K);
+	for (I=P; I<Q; I++) V = V/ppoch(B[I],K);
+  }    
+  /* for debug
+  printf("K="); 
+  for (I=0; I<3; I++) printf("%d, ",K[I]);
+  printf("qk=%lg\n",V); 
+  */
   return(V);
 }
 
@@ -685,12 +772,13 @@ static double q3_5(double A[],double B[],int K[],int I) {
 #endif
 #ifdef STANDALONE
 static void mtest4() {
-  double A[A_LEN] = {1.5};
-  double B[B_LEN]={6.5};
+  double A[1] = {1.5};
+  double B[1]={6.5};
   int K[M_n0] = {3,2,0};
   int I=2; 
   int Ki[M_n0]={3,1,0};
   double V1,V2;
+  setA(A,1); setB(B,1);
   V1=q3_5(A,B,K,I);
   V2=qk(K,A,B)/qk(Ki,A,B);
   oxprintf("%lf== %lf?\n",V1,V2);
@@ -1326,7 +1414,7 @@ static int checkJack2(int M,int N) {
 /* main() { checkJack2(3,3); } */
 #endif
 
-double mh_t(double A[A_LEN],double B[B_LEN],int N,int M) {
+double mh_t(double A[],double B[],int N,int M) {
   double F,F2;
   extern int M_df;
   extern int P_pmn;
@@ -1402,8 +1490,10 @@ double mh_t(double A[A_LEN],double B[B_LEN],int N,int M) {
     oxprintf("%%%%F=%lg,Ef=%lg,M_estimated_X0g=%lg, X0g=%lg\n",F,iv_factor(),M_estimated_X0g,X0g);
     oxprintfe("%%%%(stderr) serror=%lg, M_assigned_series_error=%lg, M_m_estimated_approx_deg=%d,M_m=%d\n",serror,M_assigned_series_error,M_m_estimated_approx_deg,M_m);
     oxprintfe("%%%%(stderr) x0value_min=%lg, x0g_bound=%lg\n",M_x0value_min, M_X0g_bound);
-    oxprintfe("%%%%(stderr) F=%lg,Ef=%lg,M_estimated_X0g=%lg, X0g=%lg\n",F,iv_factor(),M_estimated_X0g,X0g);
+    oxprintfe("%%%%(stderr) F=%lg,Ef=%lg,iv=|F*Ef|=%lg,M_estimated_X0g=%lg, X0g=%lg\n",F,iv_factor(),iv,M_estimated_X0g,X0g);
   }
+  if (isnan(F)) myerror("F is nan. Make q0 smaller (or X0g smaller on the standalone system).\n");
+  if (!isnormal(iv)) myerror("F*Ef (initial value) is zero. Make q0 larger (or X0g larger on the standalone system).\n");
 
   M_mh_t_value=F;
   return(F);
@@ -1504,7 +1594,6 @@ struct MH_RESULT *jk_main2(int argc,char *argv[],int automode,double newX0g,int 
   // double ef;
 
   int i,j; // int i,j,rank;
-  double a[1]; double b[1];
   extern double M_x[];
   extern double *Beta;
   extern int M_2n;
@@ -1580,9 +1669,7 @@ struct MH_RESULT *jk_main2(int argc,char *argv[],int automode,double newX0g,int 
     myerror("Mg must be equal to M_n\n"); mh_exit(-1);
   }
   if (Debug) showParam(NULL,1);
-  for (i=0; i<M_n; i++) {
-    M_x[i] = Beta[i]*X0g;
-  } 
+  setM_x();
 
   M_beta_i_x_o2_max=myabs(M_x[0]/2);
   if (M_n <= 1) M_beta_i_beta_j_min = myabs(Beta[0]);
@@ -1595,10 +1682,7 @@ struct MH_RESULT *jk_main2(int argc,char *argv[],int automode,double newX0g,int 
     }
   }
 
-  a[0] = ((double)Mg+1.0)/2.0;
-  b[0] = ((double)Mg+1.0)/2.0 + ((double) (*Ng))/2.0; /* bug, double check */
-  if (Debug) oxprintf("Calling mh_t with ([%lf],[%lf],%d,%d)\n",a[0],b[0],M_n,Mapprox);
-  mh_t(a,b,M_n,Mapprox);
+  mh_t(A_pFq,B_pFq,M_n,Mapprox);
   if ((!M_mh_t_success) && M_automatic) {
     jk_freeWorkArea();
     return NULL;
@@ -1636,36 +1720,7 @@ struct MH_RESULT *jk_main2(int argc,char *argv[],int automode,double newX0g,int 
 
 static int usage() {
   oxprintfe("Usages:\n");
-  oxprintfe("hgm_jack-n [--idata input_data_file --x0 x0 --degree approxm]\n");
-  oxprintfe("           [--automatic n --assigned_series_error e --x0value_min e2]\n");
-  oxprintfe("\nThe command hgm_jack-n [options] generates an input for hgm_w-n, Pr({y | y<xmax}), which is the cumulative distribution function of the largest root of the m by m Wishart matrices with n degrees of freedom and the covariantce matrix sigma.\n");
-  oxprintfe("The hgm_jack-n uses the Koev-Edelman algorithm to evalute the matrix hypergeometric function.\n");
-  oxprintfe("The degree of the approximation (Mapprox) is given by the --degree option.\n");
-  oxprintfe("Parameters are specified by the input_data_file. Otherwise, default values are used.\n\n");
-  oxprintfe("The format of the input_data_file: (The orders of the input data must be kept.)\n");
-  oxprintfe(" Mg: m(the number of variables), Beta: beta=sigma^(-1)/2 (diagonized), Ng: n,\n");
-  oxprintfe(" (Add a comment line %%Ng= before the data Ng to check the number of beta.)\n");
-  oxprintfe(" X0g: starting value of x(when --x0 option is used, this value is used)\n");
-  oxprintfe(" Iv: initial values at X0g*Beta (see our paper how to order them), are evaluated in this program. Give zeros or the symbol * to skip rank many inputs.\n");
-  oxprintfe(" Ef: a scalar factor to the initial value. It is calculated by this program. Give the zero.\n");
-  oxprintfe(" Hg: h (step size) which is for hgm_w-n, \n"); 
-  oxprintfe(" Dp: output data is stored in every Dp steps when output_data_file is specified. This is for hgm_w-n.\n");
-  oxprintfe(" Xng: terminating value of x. This is for hgm_w-n.\n");
-  oxprintfe("Optional parameters automatic, ... are interpreted by a parser. See setParam() in jack-n.c and Testdata/tmp-idata2.txt as an example. Optional paramters are given as %%parameter_name=value  Lines starting with %%%% or # are comment lines.\n");
-  oxprintfe("Parameters are redefined when they appear more than once in the idata file and the command line options.\n\n");
-  oxprintfe("With the --notable option, it does not use the Lemma 3.2 of Koev-Edelman (there is a typo: kappa'_r = mu'_r for 1<=r<=mu_k).\n");
-  oxprintfe("An example format of the input_data_file can be obtained by executing hgm_jack-n with no option. When there is no --idata file, all options are ignored.\n");
-  oxprintfe("By --automatic option, X0g and degree are automatically determined from assigend_series_error. The current strategy is described in mh_t in jack-n.c\n");
-  oxprintfe("Default values for the papameters of the automatic mode: automatic=%d, assigned_series_error=%lg, x0value_min=%lg\n",M_automatic,M_assigned_series_error,M_x0value_min);
-  oxprintfe("Todo: automatic mode throws away the table of Jack polynomials of the previous degrees and reevaluate them. They should be kept.\n");
-  oxprintfe("\nExamples:\n");
-  oxprintfe("[1] ./hgm_jack-n \n");
-  oxprintfe("[2] ./hgm_jack-n --idata Testdata/tmp-idata3.txt --degree 15  --automatic 0\n");
-  oxprintfe("[3] ./hgm_jack-n --idata Testdata/tmp-idata2.txt --degree 15 >test2.txt\n");
-  oxprintfe("    ./hgm_w-n --idata test2.txt --gnuplotf test-g\n");
-  oxprintfe("    gnuplot -persist <test-g-gp.txt\n");
-  oxprintfe("[4] ./hgm_jack-n --idata Testdata/tmp-idata3.txt --automatic 1 --assigned_series_error=1e-12\n");
-  oxprintfe("[5] ./hgm_jack-n --idata Testdata/tmp-idata4.txt\n");
+#include "usage-jack-n.h"
   return(0);
 }
 
@@ -1692,6 +1747,9 @@ static int setParamDefault() {
   Hg = 0.001;
   Dp = 1;
   Xng = 10.0;
+  setA(NULL,1); setB(NULL,1);
+  A_pFq[0] = ((double)Mg+1.0)/2.0;
+  B_pFq[0] = ((double)Mg+1.0)/2.0 + ((double) (*Ng))/2.0; 
   return(0);
 }
 
@@ -1700,11 +1758,17 @@ static int next(struct SFILE *sfp,char *s,char *msg) {
   char *ng="%%Ng=";
   // int i;
   s[0] = '%';
-  while (s[0] == '%') {
+  while ((s[0] == '%') || (s[0] == '#')) {
     if (!mh_fgets(s,SMAX,sfp)) {
       oxprintfe("Data format error at %s\n",msg);
+      oxprintfe("Is it version 2.0 format? If so, add\n%s\nat the top.\n",VSTRING);
       mh_exit(-1);
     }
+	if ((s[0] == '%') && (s[1] == '%')) continue;
+    if (s[0] == '#') continue;
+    if (strncmp(s,VSTRING,strlen(VSTRING)) == 0) {
+	  return(2);
+	}
     if (check && (strncmp(msg,ng,4)==0)) {
       if (strncmp(s,ng,5) != 0) {
         oxprintfe("Warning, there is no %%Ng= at the border of Beta's and Ng, s=%s\n",s);
@@ -1721,14 +1785,27 @@ static int setParam(char *fname) {
   struct SFILE *fp;
   int i;
   struct mh_token tk;
+  int version;
   if (fname == NULL) return(setParamDefault());
 
   Sample = 0;
   if ((fp=mh_fopen(fname,"r",JK_byFile)) == NULL) {
-    if (JK_byFile) oxprintfe("File %s is not found.\n",fp->s);
+    if (JK_byFile) oxprintfe("File %s is not found.\n",fname);
     mh_exit(-1);
   }
-  next(fp,s,"Mg(m)");
+  /* set default initial values */
+  Mg=-1;  /* number of variables */
+  Ng=(double *) mymalloc(sizeof(double)); *Ng=-1; /* *Ng is the degree of freedom 1F1 */
+  X0g=0.1;   /* evaluation point */
+  Ef=1.0;    /* exponential factor */
+  Ef_type=1;
+  Hg=0.01;   /* step size for RK */
+  Dp = 1;   /* sampling rate */
+  Xng = 10.0; /* terminal point for RK */
+
+  /* Parser for the old style (version <2.0) input */
+  version=next(fp,s,"Mg(m)");
+  if (version == 2) goto myparse;
   sscanf(s,"%d",&Mg);
   rank = imypower(2,Mg);
 
@@ -1738,7 +1815,6 @@ static int setParam(char *fname) {
     sscanf(s,"%lf",&(Beta[i]));
   }
 
-  Ng = (double *)mymalloc(sizeof(double));
   next(fp,s,"%Ng= (freedom parameter n)");
   sscanf(s,"%lf",Ng);
   
@@ -1769,6 +1845,7 @@ static int setParam(char *fname) {
   sscanf(s,"%lf",&Xng);
 
   /* Reading the optional parameters */
+ myparse: 
   while ((tk = mh_getoken(s,SMAX-1,fp)).type != MH_TOKEN_EOF) {
     /* expect ID */
     if (tk.type != MH_TOKEN_ID) {
@@ -1834,13 +1911,199 @@ static int setParam(char *fname) {
       M_show_autosteps = tk.ival;
       continue;
     }
+    // Format: #p_pFq=2  1.5  3.2
+    if (strcmp(s,"p_pFq")==0) {
+      if (mh_getoken(s,SMAX-1,fp).type != MH_TOKEN_EQ) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      if ((tk=mh_getoken(s,SMAX-1,fp)).type != MH_TOKEN_INT) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      setA(NULL,tk.ival);
+      for (i=0; i<A_LEN; i++) { 
+	if ((tk=mh_getoken(s,SMAX-1,fp)).type == MH_TOKEN_DOUBLE) {
+	  A_pFq[i] = tk.dval;
+	}else if (tk.type == MH_TOKEN_INT) {
+	  A_pFq[i] = tk.ival;
+	}else{
+	  oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+	}
+      }
+      continue;
+    }
+    if (strcmp(s,"q_pFq")==0) {
+      if (mh_getoken(s,SMAX-1,fp).type != MH_TOKEN_EQ) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      if ((tk=mh_getoken(s,SMAX-1,fp)).type != MH_TOKEN_INT) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      setB(NULL,tk.ival);
+      for (i=0; i<B_LEN; i++) { 
+	if ((tk=mh_getoken(s,SMAX-1,fp)).type == MH_TOKEN_DOUBLE) {
+	  B_pFq[i] = tk.dval;
+	}else if (tk.type == MH_TOKEN_INT) {
+	  B_pFq[i] = tk.ival;
+	}else{
+	  oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+	}
+      }
+      continue;
+    }
+    if (strcmp(s,"ef_type")==0) {
+      if (mh_getoken(s,SMAX-1,fp).type != MH_TOKEN_EQ) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      if ((tk=mh_getoken(s,SMAX-1,fp)).type != MH_TOKEN_INT) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      Ef_type = tk.ival;
+      continue;
+    }
+
+    if (strcmp(s,"Mg")==0) {
+      if (mh_getoken(s,SMAX-1,fp).type != MH_TOKEN_EQ) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      if ((tk=mh_getoken(s,SMAX-1,fp)).type != MH_TOKEN_INT) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      Mg = tk.ival;
+      rank = imypower(2,Mg);
+      continue;
+    }
+    if (strcmp(s,"Beta")==0) {
+      if (mh_getoken(s,SMAX-1,fp).type != MH_TOKEN_EQ) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+	  if (Mg <= 0) {
+        oxprintfe("Mg should be set before reading Beta.\n"); mh_exit(-1);
+      }
+      Beta = (double *)mymalloc(sizeof(double)*Mg);
+	  for (i=0; i<Mg; i++) {
+        if ((tk=mh_getoken(s,SMAX-1,fp)).type == MH_TOKEN_DOUBLE) {
+           Beta[i] = tk.dval;
+        }else if (tk.type == MH_TOKEN_INT) {
+           Beta[i] = tk.ival;
+        }else {
+          oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+        }
+      }
+      Iv = (double *)mymalloc(sizeof(double)*rank);
+	  for (i=0; i<rank; i++) {
+		Iv[i] = 0.0;
+	  }
+      continue;
+    }
+    if (strcmp(s,"Ng")==0) {
+      if (mh_getoken(s,SMAX-1,fp).type != MH_TOKEN_EQ) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      
+      if ((tk=mh_getoken(s,SMAX-1,fp)).type== MH_TOKEN_DOUBLE) {
+		*Ng = tk.dval;
+      }else if (tk.type == MH_TOKEN_INT) {
+        *Ng = tk.ival;
+      }else{
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      continue;
+    }
+    if (strcmp(s,"X0g")==0) {
+      if (mh_getoken(s,SMAX-1,fp).type != MH_TOKEN_EQ) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      if ((tk=mh_getoken(s,SMAX-1,fp)).type == MH_TOKEN_DOUBLE) {
+		X0g = tk.dval;
+	  }else if (tk.type == MH_TOKEN_INT) {
+		X0g = tk.ival;
+      }else{
+		oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+	  }			
+      continue;
+    }
+	if (strcmp(s,"Iv")==0) {
+      if (mh_getoken(s,SMAX-1,fp).type != MH_TOKEN_EQ) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+	  for (i=0; i<rank; i++) {
+        if ((tk=mh_getoken(s,SMAX-1,fp)).type == MH_TOKEN_DOUBLE) {
+		  Iv[i] = tk.dval;
+		}else if (tk.type == MH_TOKEN_INT) {
+		  Iv[i] = tk.ival;
+        }else{
+          oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+		}
+      }
+      continue;
+    }
+    if (strcmp(s,"Ef")==0) {
+      if (mh_getoken(s,SMAX-1,fp).type != MH_TOKEN_EQ) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      if ((tk=mh_getoken(s,SMAX-1,fp)).type == MH_TOKEN_DOUBLE) {
+		Ef = tk.dval;
+	  }else if (tk.type == MH_TOKEN_INT) {
+		Ef = tk.ival;
+      }else{
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+	  }
+      continue;
+    }
+    if (strcmp(s,"Hg")==0) {
+      if (mh_getoken(s,SMAX-1,fp).type != MH_TOKEN_EQ) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      if ((tk=mh_getoken(s,SMAX-1,fp)).type == MH_TOKEN_DOUBLE) {
+		Hg = tk.dval;
+	  }else if (tk.type == MH_TOKEN_INT) {
+		Hg = tk.ival;
+      }else{
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      continue;
+    }
+    if (strcmp(s,"Dp")==0) {
+      if (mh_getoken(s,SMAX-1,fp).type != MH_TOKEN_EQ) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      if ((tk=mh_getoken(s,SMAX-1,fp)).type != MH_TOKEN_INT) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      Dp = tk.dval;
+      continue;
+    }
+    if (strcmp(s,"Xng")==0) {
+      if (mh_getoken(s,SMAX-1,fp).type != MH_TOKEN_EQ) {
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+      }
+      if ((tk=mh_getoken(s,SMAX-1,fp)).type == MH_TOKEN_DOUBLE) {
+		Xng = tk.dval;
+	  }else if (tk.type == MH_TOKEN_INT) {
+		Xng = tk.ival;
+      }else{
+        oxprintfe("Syntax error at %s\n",s); mh_exit(-1);
+	  }
+      continue;
+    }
+
     oxprintfe("Unknown ID at %s\n",s); mh_exit(-1);
+  }
+  
+  /* 1F1, original wishart case. */  
+  if ((A_LEN <= 1) && (B_LEN <= 1) && (Ef_type==1) && (*Ng >= 0)) {
+    if (A_LEN <1) setA(NULL,1);
+	if (B_LEN <1) setB(NULL,1);
+    A_pFq[0] = ((double)Mg+1.0)/2.0;
+    B_pFq[0] = ((double)Mg+1.0)/2.0 + ((double) (*Ng))/2.0; /* bug, double check */
+    if (Debug) oxprintf("Calling mh_t with ([%lf],[%lf],%d,%d)\n",A_pFq[0],B_pFq[0],M_n,Mapprox);
   }
   mh_fclose(fp);
   return(0);
 }
-
-static int showParam(struct SFILE *fp,int fd) {
+#ifdef STANDALONE
+/* may remove */
+static int showParam_v1(struct SFILE *fp,int fd) {
   int rank,i;
   char swork[1024];
   if (fd) {
@@ -1851,7 +2114,9 @@ static int showParam(struct SFILE *fp,int fd) {
   for (i=0; i<Mg; i++) {
     sprintf(swork,"%%Beta[%d]=\n%lf\n",i,Beta[i]); mh_fputs(swork,fp);
   }
-  sprintf(swork,"%%Ng=\n%lf\n",*Ng); mh_fputs(swork,fp);
+  if (*Ng >= 0) {
+    sprintf(swork,"%%Ng=\n%lf\n",*Ng); mh_fputs(swork,fp);
+  }
   sprintf(swork,"%%X0g=\n%lf\n",X0g); mh_fputs(swork,fp);
   for (i=0; i<rank; i++) {
     sprintf(swork,"%%Iv[%d]=\n%lg\n",i,Iv[i]); mh_fputs(swork,fp);
@@ -1877,13 +2142,87 @@ static int showParam(struct SFILE *fp,int fd) {
   sprintf(swork,"# M_m=%d  # Approximation degree of matrix hg.\n",M_m); mh_fputs(swork,fp);
   sprintf(swork,"#beta_i_x_o2_max=%lg #max(|beta[i]*x|/2)\n",M_beta_i_x_o2_max); mh_fputs(swork,fp);
   sprintf(swork,"#beta_i_beta_j_min=%lg #min(|beta[i]-beta[j]|)\n",M_beta_i_beta_j_min); mh_fputs(swork,fp);
+  sprintf(swork,"# change # to %% to read as an optional parameter.\n"); mh_fputs(swork,fp);
+  sprintf(swork,"%%p_pFq=%d, ",A_LEN); mh_fputs(swork,fp);
+  for (i=0; i<A_LEN; i++) {
+    if (i != A_LEN-1) sprintf(swork," %lg,",A_pFq[i]); 
+    else sprintf(swork," %lg\n",A_pFq[i]); 
+    mh_fputs(swork,fp);
+  }
+  sprintf(swork,"%%q_pFq=%d, ",B_LEN); mh_fputs(swork,fp);
+  for (i=0; i<B_LEN; i++) {
+    if (i != B_LEN-1) sprintf(swork," %lg,",B_pFq[i]); 
+    else sprintf(swork," %lg\n",B_pFq[i]); 
+    mh_fputs(swork,fp);
+  }
+  sprintf(swork,"%%ef_type=%d\n",Ef_type); mh_fputs(swork,fp);
+  return(0);
+}
+#endif
+/* version2.0 format */
+static int showParam(struct SFILE *fp,int fd) {
+  int rank,i;
+  char swork[1024];
+  if (fd) {
+    fp = mh_fopen("stdout","w",1);
+  }
+  rank = imypower(2,Mg);
+  sprintf(swork,"%s\n",VSTRING); mh_fputs(swork,fp);
+  sprintf(swork,"%%Mg=\n%d\n",Mg); mh_fputs(swork,fp);
+  sprintf(swork,"%%p_pFq=%d, ",A_LEN); mh_fputs(swork,fp);
+  for (i=0; i<A_LEN; i++) {
+    if (i != A_LEN-1) sprintf(swork," %lg,",A_pFq[i]); 
+    else sprintf(swork," %lg\n",A_pFq[i]); 
+    mh_fputs(swork,fp);
+  }
+  sprintf(swork,"%%q_pFq=%d, ",B_LEN); mh_fputs(swork,fp);
+  for (i=0; i<B_LEN; i++) {
+    if (i != B_LEN-1) sprintf(swork," %lg,",B_pFq[i]); 
+    else sprintf(swork," %lg\n",B_pFq[i]); 
+    mh_fputs(swork,fp);
+  }
+  sprintf(swork,"%%ef_type=%d\n",Ef_type); mh_fputs(swork,fp);
+  sprintf(swork,"%%Beta=\n"); mh_fputs(swork,fp);
+  for (i=0; i<Mg; i++) {
+    sprintf(swork,"#Beta[%d]=\n%lf\n",i,Beta[i]); mh_fputs(swork,fp);
+  }
+  if (*Ng >= 0) {
+    sprintf(swork,"%%Ng=\n%lf\n",*Ng); mh_fputs(swork,fp);
+  }
+  sprintf(swork,"%%X0g=\n%lf\n",X0g); mh_fputs(swork,fp);
+  sprintf(swork,"%%Iv=\n"); mh_fputs(swork,fp);
+  for (i=0; i<rank; i++) {
+    sprintf(swork,"#Iv[%d]=\n%lg\n",i,Iv[i]); mh_fputs(swork,fp);
+    if (Sample && (M_n == 2) && (X0g == 0.3)) {
+      sprintf(swork,"%%Iv[%d]-Iv2[%d]=%lg\n",i,i,Iv[i]-Iv2[i]); mh_fputs(swork,fp);
+    }
+  }
+  sprintf(swork,"%%Ef=\n%lg\n",Ef); mh_fputs(swork,fp);
+  sprintf(swork,"%%Hg=\n%lf\n",Hg); mh_fputs(swork,fp);
+  sprintf(swork,"%%Dp=\n%d\n",Dp);  mh_fputs(swork,fp);
+  sprintf(swork,"%%Xng=\n%lf\n",Xng);mh_fputs(swork,fp);
+  
+  sprintf(swork,"%%%% Optional paramters\n"); mh_fputs(swork,fp);
+  sprintf(swork,"#success=%d\n",M_mh_t_success); mh_fputs(swork,fp);
+  sprintf(swork,"#automatic=%d\n",M_automatic); mh_fputs(swork,fp);
+  sprintf(swork,"#series_error=%lg\n",M_series_error); mh_fputs(swork,fp);
+  sprintf(swork,"#recommended_abserr\n"); mh_fputs(swork,fp);
+  sprintf(swork,"#abserror=%lg\n",M_recommended_abserr); mh_fputs(swork,fp);
+  if (M_recommended_relerr < MH_RELERR_DEFAULT) {
+    sprintf(swork,"%%relerror=%lg\n",M_recommended_relerr); mh_fputs(swork,fp);
+  }
+  sprintf(swork,"#mh_t_value=%lg # Value of matrix hg at X0g.\n",M_mh_t_value); mh_fputs(swork,fp);
+  sprintf(swork,"# M_m=%d  # Approximation degree of matrix hg.\n",M_m); mh_fputs(swork,fp);
+  sprintf(swork,"#beta_i_x_o2_max=%lg #max(|beta[i]*x|/2)\n",M_beta_i_x_o2_max); mh_fputs(swork,fp);
+  sprintf(swork,"#beta_i_beta_j_min=%lg #min(|beta[i]-beta[j]|)\n",M_beta_i_beta_j_min); mh_fputs(swork,fp);
+  sprintf(swork,"# change # to %% to read as an optional parameter.\n"); mh_fputs(swork,fp);
   return(0);
 }
 
 static double gammam(double a,int n) {
   double v,v2;
   int i;
-  v=mypower(sqrt(M_PI),(n*(n-1))/2);
+  v=mypower(sqrt(M_PI),(n*(n-1))/2); /* pi^(n*(n-1)/2) */
   v2=0;
   for (i=1; i<=n; i++) {
     v2 += lgamma(a-((double)(i-1))/2.0); /* not for big n */
@@ -1893,6 +2232,36 @@ static double gammam(double a,int n) {
 }
 
 static double iv_factor(void) {
+  double ef;
+  double lef;
+  double r;
+  ef=1; lef=0;
+  if (Ef_type < 1) return(1.0);
+  if (Ef_type == 1) {
+	ef=iv_factor_ef_type1();
+	lef=liv_factor_ef_type1();
+  }else if (Ef_type==2) {
+	ef = iv_factor_ef_type2();
+	lef = liv_factor_ef_type2();
+  }else{
+	return(1.0);
+  }
+  if (isnan(ef) || isinf(ef)) {
+	if (Debug) oxprintfe("Exponential factor (Ef) seems to be large or ill-conditioned.\n");
+	return(exp(lef));
+  }else {
+	r = ef/exp(lef);
+	if ((0.9 < r) && (r < 1.1)) return(ef);
+	else {
+	  oxprintfe("Warning: There seems to be a numerical error to get Ef. We use a log value of Ef");
+      oxprintfe(" Ef=%lg, exp(lef)=%lg\n",ef,exp(lef));
+	  return(exp(lef));
+	}
+  }
+  return(exp(lef));
+}
+
+static double iv_factor_ef_type1(void) {
   double v1;
   double t;
   double b;
@@ -1913,5 +2282,119 @@ static double iv_factor(void) {
   return( c*v1);
 }
 
+static double iv_factor_ef_type2(void) {
+  double ef;
+  int i,m;
+  double a,b,c;
+  double t;
+  a = A_pFq[0]; b = A_pFq[1]; c= B_pFq[0];
+  m = M_n;
+  ef = 1.0;
 
+  /*fprintf(stderr,"iv_factor_ef_type2: a=%lf, b=%lf, c=%lf, m=%d\n",a,b,c,m);*/
+  /* Ref: note 2016.02.04 */
+  if (X0g<0){ myerror("Negative X0g\n"); mh_exit(-1);}
+  t = 0;
+  for (i=0; i<m; i++) if (Beta[i]<0){ myerror("Negative beta\n"); mh_exit(-1);}
+  for (i=0; i<m; i++) t += log(Beta[i]);
+  ef *= exp((a+b-c)*t);
 
+  t = 0;
+  for (i=0; i<m; i++) t += log(Beta[i]+X0g);
+  ef *= exp(-b*t);
+
+  ef *= exp((c-a)*(2*a-1)*log(X0g));
+
+  ef *= gammam(b,m)/gammam(a+b-c,m);
+  ef *= gammam(a,m)/gammam(c,m);
+  return(ef);  
+}
+static void setM_x(void) {
+  if (Ef_type <= 1)    {setM_x_ef_type1(); return;}
+  else if (Ef_type==2) {setM_x_ef_type2(); return;}
+  setM_x_ef_type1();
+}
+static void setM_x_ef_type1(void) {
+  int i;
+  for (i=0; i<M_n; i++) {
+	M_x[i] = Beta[i]*X0g;
+	if (myabs(M_x[i]) > SERIES_ADMISSIBLE_RADIUS_TYPE1) {
+	  if (SAR_warning) oxprintfe("Warning: evaluation point %lf for %d-th variable of the series 1F1 might be far from 0. Decrease q0 (or X0g for the standalone) if necessary.\n",M_x[i],i);
+	  SAR_warning=0;
+	}
+  }
+}
+static void setM_x_ef_type2(void) {
+  int i;
+  for (i=0; i<M_n; i++) {
+	M_x[i] = X0g/(Beta[i]+X0g);
+	if (myabs(M_x[i]) > SERIES_ADMISSIBLE_RADIUS_TYPE2) {
+	  if (SAR_warning) oxprintfe("Warning: evaluation point %lf for %d-th point of the series 2F1 is near 1. Decrease q0 (or X0g for the standalone).\n",M_x[i],i);
+	  SAR_warning=0;
+	}
+  }
+}
+int reset_SAR_warning(int n) {
+  SAR_warning = n;
+  return(n);
+}
+/* log of gammam */
+static double lgammam(double a,int n) {
+  double v,v2;
+  int i;
+  v=log(M_PI)*n*(n-1)/2.0; /* log pi^(n*(n-1)/2) */
+  v2=0;
+  for (i=1; i<=n; i++) {
+    v2 += lgamma(a-((double)(i-1))/2.0); /* not for big n */
+  }
+  return(v+v2);
+}
+
+/* log of iv_factor_ef_type1() */
+static double liv_factor_ef_type1(void) {
+  double v1;
+  double t;
+  double b;
+  double detSigma;
+  double c;
+  int i,n;
+  if (X0g<0){ myerror("Negative X0g\n"); mh_exit(-1);}
+  n = (int) (*Ng);
+  v1= log(X0g)*n*M_n/2.0;
+  t = 0.0;
+  for (i=0; i<M_n; i++)  t += -X0g*Beta[i];
+  v1 += t;
+
+  b = 1; for (i=0; i<M_n; i++) b *= Beta[i];
+  detSigma = -log(b)-M_n*log(2);
+
+  c = lgammam(((double)(M_n+1))/2.0, M_n)-log(2)*M_n*n/2.0
+	-detSigma*n/2.0-lgammam(((double)(M_n+n+1))/2.0,M_n);
+  return(c+v1);
+}
+
+static double liv_factor_ef_type2(void) {
+  double ef;
+  int i,m;
+  double a,b,c;
+  double t;
+  a = A_pFq[0]; b = A_pFq[1]; c= B_pFq[0];
+  m = M_n;
+  ef = 0.0;
+
+  if (X0g<0){ myerror("Negative X0g\n"); mh_exit(-1);}
+  t = 0;
+  for (i=0; i<m; i++) if (Beta[i]<0){ myerror("Negative beta\n"); mh_exit(-1);}
+  for (i=0; i<m; i++) t += log(Beta[i]);
+  ef += (a+b-c)*t;
+
+  t = 0;
+  for (i=0; i<m; i++) t += log(Beta[i]+X0g);
+  ef += -b*t;
+
+  ef += (c-a)*(2*a-1)*log(X0g);
+
+  ef += lgammam(b,m)-lgammam(a+b-c,m);
+  ef += lgammam(a,m)-lgammam(c,m);
+  return(ef);  
+}

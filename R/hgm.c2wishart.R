@@ -1,6 +1,6 @@
-# $OpenXM: OpenXM/src/R/r-packages/hgm/R/hgm.cwishart.R,v 1.10 2016/03/01 07:29:18 takayama Exp $
-"hgm.tk.pwishart" <-
-function(m=3,n=5,beta=c(1,2,3),q0=0.2,approxdeg=-1,h=0.01,dp=-1,q=10,
+# $OpenXM: OpenXM/src/R/r-packages/hgm/R/hgm.c2wishart.R,v 1.4 2016/03/01 07:29:18 takayama Exp $
+"hgm.tk.p2wishart" <-
+function(m=3,n1=5,n2=10,beta=c(1,2,4),q0=0.3,approxdeg=-1,h=0.001,dp=-1,q=4,
          mode=c(1,1,0),method="a-rk4",err=c(-1.0,-1.0),
          automatic=1,assigned_series_error=0.00001,verbose=0,autoplot=0) { 
   x<-q; x0<-q0;
@@ -39,15 +39,26 @@ function(m=3,n=5,beta=c(1,2,3),q0=0.2,approxdeg=-1,h=0.01,dp=-1,q=10,
   }
   if (class(mode) != "numeric") stop("mode must be a vector of length 3.");
   if (length(mode) != 3) stop("mode must be a vector of length 3.");
+  if ((n1 < m) || (n2 < m)) stop("n1 and n2 must be >=m.");
 ##end of argchecks
-  ans<-
-  .C("Rmh_cwishart_gen",as.integer(m),as.integer(n),as.double(beta),as.double(x0),
+
+  pp<-2; qq<-1;
+  a<-c((m+1)/2,(n1+n2)/2);
+  b<-c((n1+m+1)/2);
+  ef_type<-2;
+
+  ans <-
+  .C("Rmh_pFq_gen",as.integer(m),
+     as.integer(pp), as.double(a),
+     as.integer(qq), as.double(b),
+     as.integer(ef_type),
+     as.double(beta),as.double(x0),
      as.integer(approxdeg),
      as.double(h),
      as.integer(dp),as.double(x),
      as.integer(mode),as.integer(rank),
      as.integer(automatic),as.double(assigned_series_error),as.integer(verbose),
-     retv=double(rsize),PACKAGE="hgm")$retv;
+     retv=double(rsize),PACKAGE="hgm")$retv ;
   if (autoplot == 0) {
     return(ans);
   }else {
