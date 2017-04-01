@@ -1,7 +1,7 @@
-0e1a1819acfa85d6499608f9f69d5dfc *DESCRIPTION
+80bddb7cdda4713c29c688bbfb98798b *DESCRIPTION
 4f0bf98a25175ce7d1ee351cabbf4cbf *NAMESPACE
-db8e6c7c9ce90cf4abeb1cd90795cc10 *R/hgm.c2wishart.R
-fcc5cc3d17da984695bc7cda1792560d *R/hgm.cwishart.R
+a4092ea7d98c17759c912ae6d14c543a *R/hgm.c2wishart.R
+fb140bfeca0fbac561a0d67011973588 *R/hgm.cwishart.R
 3deef09537d10317c6381716ccb88da6 *R/hgm.so3nc.R
 4c1dccf56b29dea6e521a1ee90acdd4b *R/ko_orthant.R
 aa1468f64dbb793055f67917f4dba6d5 *R/se_bingham.R
@@ -22,11 +22,11 @@ ea3e67f9da464c77365ca90a477f1ed6 *src/Makevars
 1dd855ef3e24ba8a26bfbeda1e91b409 *src/config.h
 09df09eac4bd70b5c5c1fc0032eb5d37 *src/hgm_ko_orthant.c
 3b98791c9526060af9b0c047f615b38b *src/jack-n.c
-f2b0137623610a54c28951d83a23dab8 *src/mh-r.c
+91664745ad3426cecf8152dbe36f70a6 *src/mh-r.c
 5f9b03d8a0075f741cdc987d731c83dd *src/mh.c
 4a3a30d76e39caac7bc75b311824ee82 *src/mh.h
 4e32a51490b35b4d5e648b994724cb20 *src/odeiv_util.h
-2f75d28b650c900e3a2a40ae7e85bcb2 *src/oxprint.h
+d9210dcf3dffa60b43e40577befdff58 *src/oxprint.h
 120419ee1c32bdd697a785f52892ebc1 *src/rk.c
 ce5cf8d2598cf7c32320f0bf3633fe27 *src/sfile.c
 a7ce9a25dc7b8dd0d9b290f4a63a6137 *src/sfile.h
