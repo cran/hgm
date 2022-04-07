@@ -108,7 +108,7 @@ See the reference below.
 H.Hashiguchi, Y.Numata, N.Takayama, A.Takemura,
 Holonomic gradient method for the distribution function of the largest root of a Wishart matrix,
 Journal of Multivariate Analysis, 117, (2013) 296-312, 
-\url{http://dx.doi.org/10.1016/j.jmva.2013.03.011},
+\doi{10.1016/j.jmva.2013.03.011},
 }
 \author{
 Nobuki Takayama

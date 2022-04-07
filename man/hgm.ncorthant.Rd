@@ -43,7 +43,7 @@ The output is the orthant probalibity.
 Tamio Koyama, Akimichi Takemura, 
 Calculation of orthant probabilities
 by the holonomic gradient method,
-\url{http://arxiv.org/abs/1211.6822}.
+\url{https://arxiv.org/abs/1211.6822}.
 }
 \author{
 Tamio Koyama

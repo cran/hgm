@@ -57,7 +57,7 @@ The output is an array of c(Theta) and its derivatives with respect to Theta_{11
 Tomonari Sei, Hiroki Shibata, Akimichi Takemura, Katsuyoshi Ohara, Nobuki Takayama,
 Properties and applications of Fisher distribution on the rotation group,
 Journal of Multivariate Analysis, 116 (2013), 440--455,
-\url{http://dx.doi.org/10.1016/j.jmva.2013.01.010}
+\doi{10.1016/j.jmva.2013.01.010}
 }
 \author{
 Nobuki Takayama
