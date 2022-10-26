@@ -1,7 +1,7 @@
 ##########################################
 # se_hgm.R 
 # ver. 2014/03/24
-# $OpenXM: OpenXM/src/R/r-packages/hgm/R/se_hgm.R,v 1.1 2014/03/25 02:25:26 takayama Exp $
+# $OpenXM$
 ##########################################
 #
 # Description

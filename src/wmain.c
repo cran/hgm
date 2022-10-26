@@ -1,5 +1,5 @@
 /*
-  $OpenXM: OpenXM/src/hgm/mh/src/wmain.c,v 1.37 2020/02/06 23:58:02 takayama Exp $
+  $OpenXM: OpenXM/src/hgm/mh/src/wmain.c,v 1.36 2016/06/06 04:49:11 takayama Exp $
   License: LGPL
 */
 #include <stdio.h>
@@ -194,14 +194,14 @@ struct MH_RESULT *mh_main(int argc,char *argv[]) {
   return(rp);
 }
 
-int mh_usage() {
+int mh_usage(void) {
 
 #include "usage-w-n.h"
 
   return(0);
 }
 
-static int setParamTest() {
+static int setParamTest(void) {
   int rank;
   int i;
   extern int Testrank;
@@ -221,7 +221,7 @@ static int setParamTest() {
   MH_Dp = 1;
   Xng = 10.0; return(0);
 }
-static int setParamDefault() {
+static int setParamDefault(void) {
   int rank;
   double a[1];
   double b[1];
@@ -603,7 +603,7 @@ static int setParam(char *fname) {
   mh_fclose(fp); return(0);
 }
 
-static int showParam() {
+static int showParam(void) {
   int rank,i;
   extern int MH_strategy;
   extern double MH_abserr;

@@ -1,4 +1,4 @@
-# $OpenXM: OpenXM/src/R/r-packages/hgm/R/hgm.so3nc.R,v 1.6 2019/11/16 11:03:43 takayama Exp $
+# $OpenXM: OpenXM/src/R/r-packages/hgm/R/hgm.so3nc.R,v 1.5 2014/03/22 00:15:40 takayama Exp $
 "hgm.tk.so3nc" <-
 function(a=1,b=2,c=3,t0=0.0,q=1,deg=0,log=0) { 
 #  library.dynam("mypkg",package="mypkg",lib.loc="./");

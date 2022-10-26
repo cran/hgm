@@ -1,5 +1,5 @@
 /*
-   $OpenXM: OpenXM/src/hgm/mh/src/sfile.h,v 1.17 2016/06/01 00:50:19 takayama Exp $
+   $OpenXM: OpenXM/src/hgm/mh/src/sfile.h,v 1.16 2016/05/30 00:38:18 takayama Exp $
  */
 #include "oxprint.h"
 struct SFILE {

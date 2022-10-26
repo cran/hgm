@@ -1,4 +1,4 @@
-/*$OpenXM: OpenXM/src/hgm/orthant/src/hgm_ko_orthant.c,v 1.6 2022/04/06 01:03:42 takayama Exp $*/
+/*$OpenXM: OpenXM/src/hgm/orthant/src/hgm_ko_orthant.c,v 1.5 2015/04/01 06:10:34 takayama Exp $*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>

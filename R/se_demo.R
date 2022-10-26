@@ -1,6 +1,6 @@
 # 2014/03/24 sei
 # A demo program; von Mises--Fisher on S^{3-1}
-# $OpenXM: OpenXM/src/R/r-packages/hgm/R/se_demo.R,v 1.1 2014/03/25 02:25:26 takayama Exp $
+# $OpenXM$
 
 # source("se_hgm.R")
 

@@ -1,4 +1,4 @@
-% $OpenXM: OpenXM/src/R/r-packages/hgm/man/hgm.se.hgm.Bingham.Rd,v 1.6 2015/03/27 02:36:30 takayama Exp $
+% $OpenXM: OpenXM/src/R/r-packages/hgm/man/hgm.se.hgm.Bingham.Rd,v 1.5 2015/03/26 11:54:13 takayama Exp $
 \name{hgm.ncBingham}
 \alias{hgm.ncBingham}
 %\alias{hgm.se.hgm.Bingham}

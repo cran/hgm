@@ -1,4 +1,4 @@
-# $OpenXM: OpenXM/src/R/r-packages/hgm/R/ko_orthant.R,v 1.7 2020/02/06 04:11:49 takayama Exp $
+# $OpenXM: OpenXM/src/R/r-packages/hgm/R/ko_orthant.R,v 1.6 2014/04/09 08:31:06 tkoyama Exp $
 #dyn.load("hgm_ko_orthant.so")
 if (!is.loaded("hgm")) library.dynam("hgm",package="hgm",lib.loc=NULL);
 

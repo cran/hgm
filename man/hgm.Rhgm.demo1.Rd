@@ -1,4 +1,4 @@
-% $OpenXM: OpenXM/src/R/r-packages/hgm/man/hgm.Rhgm.demo1.Rd,v 1.2 2015/03/27 02:36:30 takayama Exp $
+% $OpenXM: OpenXM/src/R/r-packages/hgm/man/hgm.Rhgm.demo1.Rd,v 1.1 2015/03/24 07:49:06 takayama Exp $
 \name{hgm.Rhgm.demo1}
 \alias{hgm.Rhgm.demo1}
 %- Also NEED an '\alias' for EACH other topic documented here.

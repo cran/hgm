@@ -1,5 +1,5 @@
 /*
-  $OpenXM: OpenXM/src/hgm/mh/src/sfile.c,v 1.22 2016/06/06 04:39:30 takayama Exp $
+  $OpenXM: OpenXM/src/hgm/mh/src/sfile.c,v 1.21 2016/02/13 02:19:00 takayama Exp $
 */
 #include <stdio.h>
 #include <stdlib.h>

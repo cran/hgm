@@ -1,4 +1,4 @@
-/* $OpenXM: OpenXM/src/hgm/mh/src/mh-r.c,v 1.12 2019/11/16 10:57:21 takayama Exp $
+/* $OpenXM: OpenXM/src/hgm/mh/src/mh-r.c,v 1.11 2017/04/01 12:01:25 takayama Exp $
  R interface module
 */
 

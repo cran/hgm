@@ -1,4 +1,4 @@
-# $OpenXM: OpenXM/src/R/r-packages/hgm/R/hgm.cwishart.R,v 1.12 2020/02/06 04:11:49 takayama Exp $
+# $OpenXM: OpenXM/src/R/r-packages/hgm/R/hgm.cwishart.R,v 1.11 2017/03/22 00:42:57 takayama Exp $
 "hgm.tk.pwishart" <-
 function(m=3,n=5,beta=c(1,2,3),q0=0.2,approxdeg=-1,h=0.01,dp=-1,q=10,
          mode=c(1,1,0),method="a-rk4",err=c(-1.0,-1.0),

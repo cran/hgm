@@ -1,5 +1,5 @@
 /*
-$OpenXM: OpenXM/src/hgm/mh/src/code-n.c,v 1.10 2016/02/13 02:18:59 takayama Exp $
+$OpenXM: OpenXM/src/hgm/mh/src/code-n.c,v 1.9 2015/04/02 01:11:13 takayama Exp $
 License: LGPL
 Ref: Copied from this11/misc-2011/A1/wishart/Prog
 cf. @s/2011/12/01-my-note-code-n.pdf
